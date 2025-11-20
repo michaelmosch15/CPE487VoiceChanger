@@ -41,10 +41,6 @@ set_property -dict { PACKAGE_PIN G17 IOSTANDARD LVCMOS33 } [get_ports { dac_SDIN
 set_property -dict { PACKAGE_PIN D17 IOSTANDARD LVCMOS33 } [get_ports { adc_SDOUT }]
 
 
-## ============================================================
-## Slide Switches SW[0..7]
-## ============================================================
-
 set_property -dict { PACKAGE_PIN J15 IOSTANDARD LVCMOS33 } [get_ports { SW[0] }]
 set_property -dict { PACKAGE_PIN L16 IOSTANDARD LVCMOS33 } [get_ports { SW[1] }]
 set_property -dict { PACKAGE_PIN M13 IOSTANDARD LVCMOS33 } [get_ports { SW[2] }]

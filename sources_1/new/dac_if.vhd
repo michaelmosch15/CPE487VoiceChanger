@@ -4,32 +4,37 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity dac_if is
     port (
-        SCLK    : in  std_logic;
-        L_start : in  std_logic;
-        R_start : in  std_logic;
-        L_data  : in  signed(15 downto 0);
-        R_data  : in  signed(15 downto 0);
+        SCLK    : in  std_logic;                       -- I2S serial clock
+        L_start : in  std_logic;                       -- load left word
+        R_start : in  std_logic;                       -- load right word
+        L_data  : in  signed(15 downto 0);             -- 16-bit sample input (will be sign-extended)
+        R_data  : in  signed(15 downto 0);             -- 16-bit sample input (will be sign-extended)
         SDATA   : out std_logic
     );
 end dac_if;
 
 architecture Behavioral of dac_if is
-    signal sreg : std_logic_vector(15 downto 0) := (others => '0');
+    -- Use a 24-bit shift register for CS4344 24-bit frames. Input 16-bit samples are
+    -- sign-extended to 24 bits so MSB alignment is preserved and the DAC receives
+    -- the expected 24-bit word length.
+    signal sreg24 : std_logic_vector(23 downto 0) := (others => '0');
 begin
 
-dac_proc : process
-begin
-    wait until falling_edge(SCLK);
+    process(SCLK)
+    begin
+        if falling_edge(SCLK) then
+            if L_start = '1' then
+                -- sign-extend 16-bit signed value to 24 bits, MSB-aligned
+                sreg24 <= std_logic_vector(resize(L_data, 24));
+            elsif R_start = '1' then
+                sreg24 <= std_logic_vector(resize(R_data, 24));
+            else
+                -- shift left (MSB-first): output is the MSB
+                sreg24 <= sreg24(22 downto 0) & '0';
+            end if;
+        end if;
+    end process;
 
-    if L_start = '1' then
-        sreg <= std_logic_vector(L_data);
-    elsif R_start = '1' then
-        sreg <= std_logic_vector(R_data);
-    else
-        sreg <= sreg(14 downto 0) & '0';  -- shift MSB-first
-    end if;
-end process;
-
-SDATA <= sreg(15);
+    SDATA <= sreg24(23);
 
 end Behavioral;
