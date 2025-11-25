@@ -37,8 +37,11 @@ set_property -dict { PACKAGE_PIN E18 IOSTANDARD LVCMOS33 } [get_ports { dac_SCLK
 # JA4 → dac_SDIN
 set_property -dict { PACKAGE_PIN G17 IOSTANDARD LVCMOS33 } [get_ports { dac_SDIN }]
 
-# JA7 → adc_SDOUT (THIS IS NOW CORRECT)
-set_property -dict { PACKAGE_PIN D17 IOSTANDARD LVCMOS33 } [get_ports { adc_SDOUT }]
+# JA7/JA8/JA9 supply the ADC clocks, JA10 returns serialized data
+set_property -dict { PACKAGE_PIN D17 IOSTANDARD LVCMOS33 } [get_ports { adc_MCLK }]
+set_property -dict { PACKAGE_PIN E17 IOSTANDARD LVCMOS33 } [get_ports { adc_LRCK }]
+set_property -dict { PACKAGE_PIN F18 IOSTANDARD LVCMOS33 } [get_ports { adc_SCLK }]
+set_property -dict { PACKAGE_PIN G18 IOSTANDARD LVCMOS33 } [get_ports { adc_SDOUT }]
 
 
 ## ============================================================

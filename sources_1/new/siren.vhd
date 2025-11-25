@@ -12,6 +12,10 @@ entity siren is
         dac_SCLK  : out std_logic;           -- serial bit clock
         dac_SDIN  : out std_logic;           -- serial data to DAC
 
+        adc_MCLK  : out std_logic;           -- master clock driving Pmod I2S2 ADC (blue jack)
+        adc_LRCK  : out std_logic;           -- ADC left/right clock copy
+        adc_SCLK  : out std_logic;           -- ADC serial bit clock copy
+
         LED       : out std_logic_vector(1 downto 0)
     );
 end siren;
@@ -41,8 +45,9 @@ architecture Behavioral of siren is
 
     signal tcount                 : unsigned(19 downto 0) := (others => '0');
     signal dac_load_L, dac_load_R : std_logic := '0';
+    signal mclk                   : std_logic := '0';
     signal sclk                   : std_logic := '0';
-    signal audio_CLK              : std_logic := '0';
+    signal lrck                   : std_logic := '0';
 
     signal L_in, R_in             : signed(15 downto 0) := (others => '0');
     signal data_L, data_R         : signed(15 downto 0) := (others => '0');
@@ -72,18 +77,23 @@ begin
         end if;
     end process;
 
-    dac_MCLK  <= not tcount(1);  -- 12.5 MHz
-    sclk      <= tcount(4);      -- ~1.56 MHz serial clock
-    audio_CLK <= tcount(9);      -- ~48.8 kHz LRCK
+    mclk <= not tcount(1);  -- 12.5 MHz (from 50 MHz / 4)
+    sclk <= tcount(4);      -- ~1.56 MHz serial clock
+    lrck <= tcount(9);      -- ~48.8 kHz LRCK
 
-    dac_LRCK <= audio_CLK;
+    dac_MCLK <= mclk;
+    dac_LRCK <= lrck;
     dac_SCLK <= sclk;
+
+    adc_MCLK <= mclk;
+    adc_LRCK <= lrck;
+    adc_SCLK <= sclk;
 
     -- Instantiate ADC interface to capture samples from the Pmod I2S2 input
     adc_in : adc
         port map (
             SCLK   => sclk,
-            LRCK   => audio_CLK,
+            LRCK   => lrck,
             SDOUT  => adc_SDOUT,
             L_data => L_in,
             R_data => R_in
@@ -104,7 +114,7 @@ begin
         );
 
     -- Simple LED debug: LED(0) = LRCK heartbeat, LED(1) = ADC activity
-    LED(0) <= audio_CLK;
+    LED(0) <= lrck;
 
     process(sclk)
     begin
