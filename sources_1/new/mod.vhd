@@ -11,9 +11,11 @@ entity top_mod is
         dac_MCLK  : out std_logic;
         dac_LRCK  : out std_logic;
         dac_SCLK  : out std_logic;
-        dac_SDIN  : out std_logic;
+    dac_SDIN  : out std_logic;
 
-        adc_SDOUT : in  std_logic
+    adc_SDOUT : in  std_logic;
+
+    LED       : out std_logic_vector(1 downto 0)
     );
 end top_mod;
 
@@ -45,11 +47,9 @@ architecture Behavioral of top_mod is
     signal dac_load_L, dac_load_R : std_logic;
     signal L_in, R_in             : signed(15 downto 0) := (others => '0');
     signal lrck_prev              : std_logic := '0';
-
-    constant L_START_LO : unsigned(9 downto 0) := to_unsigned(15, 10);
-    constant L_START_HI : unsigned(9 downto 0) := to_unsigned(46, 10);
-    constant R_START_LO : unsigned(9 downto 0) := to_unsigned(527, 10);
-    constant R_START_HI : unsigned(9 downto 0) := to_unsigned(558, 10);
+    signal frame_cnt              : unsigned(23 downto 0) := (others => '0');
+    signal activity_timer         : unsigned(23 downto 0) := (others => '0');
+    signal sdout_prev             : std_logic := '0';
 
 begin
 
@@ -61,9 +61,9 @@ begin
     end if;
 end process;
 
-dac_MCLK  <= not tcount(1);
-sclk      <= tcount(4);
-audio_CLK <= tcount(9);
+dac_MCLK  <= not tcount(1);  -- ~12.5 MHz (MCLK)
+sclk      <= tcount(4);      -- ~3.125 MHz (BCLK/SCLK)
+audio_CLK <= tcount(10);     -- ~48.8 kHz (LRCK) => MCLK/LRCK ≈ 256
 
 dac_LRCK <= audio_CLK;
 dac_SCLK <= sclk;
@@ -82,6 +82,7 @@ begin
         -- detect LRCK rising edge -> left word completed
         if (lrck_prev = '0') and (audio_CLK = '1') then
             dac_load_L <= '1';
+            frame_cnt <= frame_cnt + 1;
         -- detect LRCK falling edge -> right word completed
         elsif (lrck_prev = '1') and (audio_CLK = '0') then
             dac_load_R <= '1';
@@ -89,8 +90,20 @@ begin
 
         -- update previous LRCK state for next falling-edge sample
         lrck_prev <= audio_CLK;
+
+        -- simple activity monitor: keep LED(1) lit when ADC serial data toggles
+        if adc_SDOUT /= sdout_prev then
+            activity_timer <= (others => '1');
+        elsif activity_timer /= 0 then
+            activity_timer <= activity_timer - 1;
+        end if;
+
+        sdout_prev <= adc_SDOUT;
     end if;
 end process;
+
+LED(0) <= frame_cnt(frame_cnt'high);                                   -- slow blink when LRCK edges occur
+LED(1) <= '1' when activity_timer /= 0 else '0';                        -- lights when SDOUT is toggling (audio activity)
 
 u_adc : adc
     port map (
